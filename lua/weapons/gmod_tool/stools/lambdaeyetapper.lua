@@ -177,7 +177,10 @@ function TOOL:Reload()
 end
 
 -- Toggle between first and third person
+-- Stupid Prediction
 function TOOL:RightClick( tr )
+    if CLIENT then return end
+
     local owner = self:GetOwner()
     net.Start( "lambdaeyetapper_changeview" )
     net.Send( owner )
