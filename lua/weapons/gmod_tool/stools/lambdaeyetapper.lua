@@ -123,7 +123,7 @@ if ( CLIENT ) then
             if !IsValid( self ) or !IsValid( ply ) or !ply:Alive() then hook.Remove( "CalcView", "lambdaeyetapperCalcView" ) return end 
 
             local ragdoll = self.ragdoll
-            local targetEnt = ( ( self:GetIsDead() and IsValid( ragdoll ) ) and ragdoll or self )
+            local targetEnt = ( ( self.IsLambdaPlayer and self:GetIsDead() and IsValid( ragdoll ) ) and ragdoll or self )
 
             local eyePos, eyeAng
             local eyeData = GetEyePosition( targetEnt )
