@@ -63,7 +63,6 @@ if ( CLIENT ) then
             if IsValid( ene ) then 
                 local enePos = ( ene.IsLambdaPlayer and ene:GetAttachmentPoint( "eyes" ).Pos or ( isfunction( ene.EyePos ) and ene:EyePos() or ene:WorldSpaceCenter() ) )
                 eyesData.Ang = ( enePos - eyesData.Pos ):Angle()
-                if ent:GetUsingSWEP() then eyesData.Ang = eyesData.Ang + AngleRand( -self.l_swepspread, self.l_swepspread ) end
             end
 
             return eyesData 
