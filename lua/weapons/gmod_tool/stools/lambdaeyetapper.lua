@@ -9,7 +9,8 @@ TOOL.Tab = "Lambda Player"
 TOOL.Category = "Tools"
 TOOL.Name = "#tool.lambdaeyetapper"
 TOOL.ClientConVar = {
-    [ "tpzoom" ] = "128"
+    [ "tpzoom" ] = "128",
+    [ "tpondeath" ] = "0"
 }
 
 if ( CLIENT ) then
@@ -52,20 +53,37 @@ if ( CLIENT ) then
 
     local self
     local fpMode = false
+    local lastMode = fpMode
     local viewTbl = {}
+    local curLookAng = angle_zero
+    local snapAngles = false
+    local targetShrinkBoneTbl = {}
+    local prevTarget = self
+
+    local function ResetEyeTapperInfo()
+        self = NULL
+        fpMode = false
+        lastMode = fpMode
+        viewTbl = {}
+        curLookAng = angle_zero
+        snapAngles = false
+        targetShrinkBoneTbl = {}
+        prevTarget = self
+    end
 
     -- Gets the position and angles of entity's eyes. Returns false if none is found.
     local function GetEyePosition( ent )
         if ent.IsLambdaPlayer then
             local eyesData = self:GetAttachmentPoint( "eyes" )
-
-            local ene = ent:GetEnemy()
-            if IsValid( ene ) then 
+            local yawLimit = eyesData.Ang.y
+            
+            if ent:InCombat() and ent:GetIsFiring() then
+                local ene = ent:GetEnemy()
                 local enePos = ( ene.IsLambdaPlayer and ene:GetAttachmentPoint( "eyes" ).Pos or ( isfunction( ene.EyePos ) and ene:EyePos() or ene:WorldSpaceCenter() ) )
                 eyesData.Ang = ( enePos - eyesData.Pos ):Angle()
             end
 
-            return eyesData 
+            return eyesData, yawLimit
         end
 
         local eyesID = ent:LookupAttachment( "eyes" )
@@ -82,54 +100,108 @@ if ( CLIENT ) then
         return false
     end
 
+    local vector_fullscale = Vector( 1, 1, 1 )
+
+    local function ChangeHeadBoneScale( full, target )
+        target = target or self
+        for _, bone in ipairs( targetShrinkBoneTbl ) do
+            target:ManipulateBoneScale( bone, ( !full and vector_origin or vector_fullscale ) )
+        end
+    end
+
     -- Changes the view from first to third or likewise
-    net.Receive( "lambdaeyetapper_changeview", function() fpMode = !fpMode end )
+    net.Receive( "lambdaeyetapper_changeview", function() 
+        ChangeHeadBoneScale( fpMode )
+        fpMode = !fpMode
+    end )
 
     -- Eye tapping main code
-    net.Receive( "lambdaeyetapper_changetarget", function()
+    net.Receive( "lambdaeyetapper_changetarget", function( len, ply )
         local entindex = net.ReadInt( 32 )
-        if entindex == -1 then self = nil return end -- Exit eye tapping
-        
+        if entindex == -1 then 
+            ChangeHeadBoneScale( true )
+            ResetEyeTapperInfo()
+            return 
+        end -- Exit eye tapping
+
+        if IsValid( self ) and fpMode then
+            snapAngles = true
+            ChangeHeadBoneScale( true )
+        end
+
         self = Entity( entindex )
         if !IsValid( self ) then return end
 
+        prevTarget = self
+        targetShrinkBoneTbl = net.ReadTable()
+
+        ChangeHeadBoneScale( !fpMode )
+
         -- Eye tap HUD showing health, armor, and the Lambda
         hook.Add( "HUDPaint", "lambdaeyetapperHUD", function() 
-            if !IsValid( self ) or ( !IsValid( LocalPlayer() ) or !LocalPlayer():Alive() ) then hook.Remove( "HUDPaint", "lambdaeyetapperHUD" ) return end 
+            if !IsValid( self ) or ( !IsValid( LocalPlayer() ) or !LocalPlayer():Alive() ) then 
+                hook.Remove( "HUDPaint", "lambdaeyetapperHUD" ) 
+                ResetEyeTapperInfo()
+                return 
+            end 
 
             local sw, sh = ScrW(), ScrH()
-
             local name = self:GetLambdaName()
             local color = self:GetDisplayColor()
-            local hp = self:GetNW2Float( "lambda_health", "NAN" )
-            local hpW = 2
-            local armor = self:GetArmor()
-            hp = hp == "NAN" and self:GetNWFloat( "lambda_health", "NAN" ) or hp
-
-            if armor > 0 and displayArmor:GetBool() then
-                hpW = 2.1
-                DrawText( tostring( armor ) .. "%", "lambdaplayers_eyetapperfont", ( sw / 1.9 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
-            end
-
+            
             DrawText( name, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.3 ) , color, TEXT_ALIGN_CENTER )
-            DrawText( ( self:Alive() and tostring( hp ) .. "%" or "*DEAD*" ), "lambdaplayers_eyetapperfont", ( sw / hpW ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+
+            if !self:Alive() then
+                DrawText( "*DEAD*", "lambdaplayers_eyetapperfont", ( sw / 2 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+            else
+                local hp = self:GetNW2Float( "lambda_health", "NAN" )
+                hp = ( hp == "NAN" and self:GetNWFloat( "lambda_health", "NAN" ) or hp )
+                
+                local hpW = 2
+                local armor = self:GetArmor()
+                if armor > 0 and displayArmor:GetBool() then
+                    hpW = 2.1
+                    DrawText( tostring( armor ) .. "%", "lambdaplayers_eyetapperfont", ( sw / 1.9 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+                end
+
+                DrawText( tostring( hp ) .. "%", "lambdaplayers_eyetapperfont", ( sw / hpW ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+            end
         end )
 
         -- The view code
         local vecOffset = Vector( 0, 0, 32 )
         local vecRagOffset = Vector( 0, 0, 16 )
         hook.Add( "CalcView", "lambdaeyetapperCalcView", function( ply, origin, angles, fov, znear, zfar )
-            if !IsValid( self ) or !IsValid( ply ) or !ply:Alive() then hook.Remove( "CalcView", "lambdaeyetapperCalcView" ) return end 
+            if !IsValid( self ) or !IsValid( ply ) or !ply:Alive() then 
+                hook.Remove( "CalcView", "lambdaeyetapperCalcView" ) 
+                ResetEyeTapperInfo()
+                return 
+            end 
 
             local ragdoll = self.ragdoll
+            if !IsValid( ragdoll ) then ragdoll = self:GetNW2Entity( "lambda_serversideragdoll" ) end
             local targetEnt = ( ( self.IsLambdaPlayer and self:GetIsDead() and IsValid( ragdoll ) ) and ragdoll or self )
 
             local eyePos, eyeAng
-            local eyeData = GetEyePosition( targetEnt )
-            if fpMode and ( targetEnt != ragdoll or eyeData ) then
+            local eyeData, yawLimit = GetEyePosition( targetEnt )
+            local tpOnDeath = ply:GetInfo( "lambdaeyetapper_tpondeath" )
+            local cameraView = fpMode
+
+            if cameraView and ( targetEnt != ragdoll or eyeData and !tobool( tpOnDeath ) ) then
                 eyePos = eyeData.Pos
                 eyeAng = eyeData.Ang
+                
+                if yawLimit then
+                    local angDiffY = math.AngleDifference( eyeAng.y, yawLimit )
+                    if angDiffY > 90 then
+                        eyeAng.y = ( eyeAng.y - ( angDiffY - 90 ) )
+                    elseif angDiffY < -90 then
+                        eyeAng.y = ( eyeAng.y - ( angDiffY + 90 ) )
+                    end
+                end
+
                 if targetEnt != ragdoll then eyeAng.z = 0 end
+                curLookAng = ( ( snapAngles or targetEnt == ragdoll ) and eyeAng or LerpAngle( 6 * FrameTime(), curLookAng, eyeAng ) )
             else
                 local aimVec = ply:GetAimVector()
                 local tpZoom = ply:GetInfo( "lambdaeyetapper_tpzoom" )
@@ -140,12 +212,26 @@ if ( CLIENT ) then
                 tracetbl.filter = targetEnt
                 local collCheck = Trace( tracetbl )
 
+                cameraView = false
                 eyePos = ( ( tracetbl.start + zOffset ) - aimVec * ( tpZoom * ( collCheck.Fraction - 0.1 ) ) )
                 eyeAng = ply:EyeAngles(); eyeAng.z = 0
+                curLookAng = eyeAng
             end
 
+            if lastMode != cameraView or targetEnt != prevTarget then
+                if IsValid( prevTarget ) then
+                    ChangeHeadBoneScale( true, prevTarget )
+                    ChangeHeadBoneScale( !cameraView, targetEnt )
+                end
+
+                prevTarget = targetEnt
+            end
+
+            snapAngles = ( cameraView != lastMode or targetEnt == ragdoll )
+            lastMode = cameraView
+
             viewTbl.origin = eyePos
-            viewTbl.angles = eyeAng
+            viewTbl.angles = curLookAng
             viewTbl.fov = fov
             viewTbl.znear = znear
             viewTbl.zfar = zfar
@@ -159,6 +245,9 @@ if ( CLIENT ) then
     function TOOL.BuildCPanel( cpanel )
         cpanel:NumSlider( "Third Person Zoom", "lambdaeyetapper_tpzoom", 64, 256, 0 )
         cpanel:ControlHelp( "Determines how far camera should be from Lambda Player when viewing from third person view." )
+
+        cpanel:CheckBox( "Force Third Person On Death", "lambdaeyetapper_tpondeath" )
+        cpanel:ControlHelp( "If camera view should be in third person while viewing a dead Lambda Player" )
     end
 
 end
@@ -185,13 +274,33 @@ if ( SERVER ) then
         if ply.l_eyetapperrolls then table_Empty( ply.l_eyetapperrolls ) end
     end )
 
+    local function ShrinkChildBones( target, parentId, boneTbl )
+        for _, childID in ipairs( target:GetChildBones( parentId ) ) do
+            boneTbl[ #boneTbl + 1 ] = childID
+            ShrinkChildBones( target, childID, boneTbl )
+        end
+    end
+
+    local function GetShrinkHeadBones( target )
+        local headBone = target:LookupBone( "ValveBiped.Bip01_Head1" )
+        if !headBone then return end
+
+        local boneTbl = {}
+        boneTbl[ #boneTbl + 1 ] = headBone
+        ShrinkChildBones( target, headBone, boneTbl )
+        return boneTbl
+    end
+
     -- Eye tap to a Lambda Player we're aiming at.
     function TOOL:LeftClick( tr )
         local owner = self:GetOwner()
-        if !owner.l_eyetapperrolls then 
-            owner.l_eyetapperrolls = {} 
+        
+        local rolls = owner.l_eyetapperrolls
+        if !rolls then
+            rolls = {}
+            owner.l_eyetapperrolls = rolls
         else
-            table_Empty( owner.l_eyetapperrolls ) 
+            table_Empty( rolls ) 
         end
 
         if IsValid( owner.l_eyetapperent ) then
@@ -204,10 +313,11 @@ if ( SERVER ) then
         end
 
         local ent = tr.Entity
-        if !IsValid( ent ) or !ent.IsLambdaPlayer or ent:GetIsDead() then return end
+        if !LambdaIsValid( ent ) or !ent.IsLambdaPlayer then return end
 
         net.Start( "lambdaeyetapper_changetarget" )
             net.WriteInt( ent:EntIndex(), 32 )
+            net.WriteTable( GetShrinkHeadBones( ent ) )
         net.Send( owner )
 
         owner.l_eyetapperent = ent
@@ -218,26 +328,33 @@ if ( SERVER ) then
     function TOOL:Reload()
         local owner = self:GetOwner()
         local lambdas = GetLambdaPlayers()
-        
-        if !owner.l_eyetapperrolls then 
-            owner.l_eyetapperrolls = {} 
-        elseif table_Count( owner.l_eyetapperrolls ) == #lambdas then 
-            table_Empty( owner.l_eyetapperrolls ) 
+
+        local rolls = owner.l_eyetapperrolls
+        if !rolls then
+            rolls = {}
+            owner.l_eyetapperrolls = rolls
+        elseif table_Count( rolls ) == #lambdas then 
+            table_Empty( rolls ) 
         end
 
-        local wasEyeTapping = IsValid( owner.l_eyetapperent )
+        local prevEnt = owner.l_eyetapperent
+        local wasEyeTapping = IsValid( prevEnt )
+        
         for _, v in RandomPairs( lambdas ) do
-            if v == owner.l_eyetapperent or owner.l_eyetapperrolls[ v ] then continue end
+            if v == prevEnt or rolls[ v ] then continue end
 
             net.Start( "lambdaeyetapper_changetarget" )
                 net.WriteInt( v:EntIndex(), 32 )
+                net.WriteTable( GetShrinkHeadBones( v ) )
             net.Send( owner )
 
-            owner.l_eyetapperrolls[ v ] = true
+            rolls[ v ] = true
             owner.l_eyetapperent = v
-            break
+
+            return !wasEyeTapping
         end
-        return !wasEyeTapping
+        
+        return false
     end
 
     -- Toggle between first and third person camera views.
