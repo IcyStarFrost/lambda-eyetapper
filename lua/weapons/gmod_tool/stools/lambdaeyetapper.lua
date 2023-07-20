@@ -149,19 +149,36 @@ if ( CLIENT ) then
             local name = self:GetLambdaName()
             local color = self:GetDisplayColor()
             
-            DrawText( name, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.3 ) , color, TEXT_ALIGN_CENTER )
+            DrawText( name, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.4 ) , color, TEXT_ALIGN_CENTER )
 
             if !self:Alive() then
-                DrawText( "*DEAD*", "lambdaplayers_eyetapperfont", ( sw / 2 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+                DrawText( "*DEAD*", "lambdaplayers_eyetapperfont", ( sw / 2 ), ( sh / 1.35 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
             else
+                DrawText( "State: " .. self:GetState(), "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.35 ) , color, TEXT_ALIGN_CENTER )
+
+                local wepName = _LAMBDAPLAYERSWEAPONS[ self:GetWeaponName() ]
+                if wepName and wepName.prettyname then
+                    wepName = wepName.prettyname
+                else
+                    wepName = self:GetWeaponName()
+                end
+                DrawText( "Weapon: " .. wepName, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.3 ) , color, TEXT_ALIGN_CENTER )
+
+                local enemy = self:GetEnemy()
+                if IsValid( enemy ) and ( self:IsPanicking() or self:InCombat() ) then
+                    local enemyName = ( ( enemy.IsLambdaPlayer or enemy:IsPlayer() ) and enemy:Nick() or language.GetPhrase( "#" .. enemy:GetClass() ) )
+                    if enemyName[ 1 ] == "#" then enemyName = enemy:GetClass() end
+                    DrawText( "Enemy: " .. enemyName .. " (" .. tostring( enemy ) .. ")", "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.25 ), color, TEXT_ALIGN_CENTER )
+                end
+
                 local hp = self:GetNW2Float( "lambda_health", "NAN" )
                 hp = ( hp == "NAN" and self:GetNWFloat( "lambda_health", "NAN" ) or hp )
                 
                 local hpW = 2
                 local armor = self:GetArmor()
                 if armor > 0 and displayArmor:GetBool() then
-                    hpW = 2.1
-                    DrawText( tostring( armor ) .. "%", "lambdaplayers_eyetapperfont", ( sw / 1.9 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
+                    hpW = 2.2
+                    DrawText( tostring( armor ) .. "%", "lambdaplayers_eyetapperfont", ( sw / 1.8 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
                 end
 
                 DrawText( tostring( hp ) .. "%", "lambdaplayers_eyetapperfont", ( sw / hpW ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
