@@ -299,12 +299,14 @@ if ( SERVER ) then
     end
 
     local function GetShrinkHeadBones( target )
-        local headBone = target:LookupBone( "ValveBiped.Bip01_Head1" )
-        if !headBone then return end
-
         local boneTbl = {}
-        boneTbl[ #boneTbl + 1 ] = headBone
-        ShrinkChildBones( target, headBone, boneTbl )
+
+        local headBone = target:LookupBone( "ValveBiped.Bip01_Head1" )
+        if headBone then
+            boneTbl[ #boneTbl + 1 ] = headBone
+            ShrinkChildBones( target, headBone, boneTbl )
+        end
+        
         return boneTbl
     end
 
