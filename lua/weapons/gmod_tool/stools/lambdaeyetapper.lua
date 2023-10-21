@@ -49,32 +49,30 @@ if ( CLIENT ) then
     language.Add("tool.lambdaeyetapper.left", "Fire onto a Lambda Player to see what they are seeing. Fire again to exit a Lambda's view" )
     language.Add("tool.lambdaeyetapper.right", "Right click to toggle from first person to third person camera views" )
     language.Add("tool.lambdaeyetapper.reload", "Reload to tap into a random Lambda Player's view" )
+    
     --
 
-    local self
-    local fpMode = false
-    local lastMode = fpMode
-    local viewTbl = {}
-    local curLookAng = angle_zero
-    local snapAngles = false
-    local targetShrinkBoneTbl = {}
-    local prevTarget = self
+    LET = LET or {}
 
-    local function ResetEyeTapperInfo()
-        self = NULL
-        fpMode = false
-        lastMode = fpMode
-        viewTbl = {}
-        curLookAng = angle_zero
-        snapAngles = false
-        targetShrinkBoneTbl = {}
-        prevTarget = self
+    local function SetupLETTable( reset )
+        LET.Lambda = ( !reset and LET.Lambda or NULL ) 
+        LET.CamTarget = ( !reset and LET.CamTarget or LET.Lambda )
+        LET.PreviousTarget = ( !reset and LET.PreviousTarget or LET.Lambda )
+
+        LET.FirstPersonCam = ( !reset and LET.FirstPersonCam or false )
+        LET.LastCamMode = ( !reset and LET.LastCamMode or LET.FirstPersonCam )
+        LET.SnapAngles = ( !reset and LET.SnapAngles or false )
+        
+        LET.CurrentAngles = ( !reset and LET.CurrentAngles or Angle() )
+        LET.CalcViewTbl = ( !reset and LET.CalcViewTbl or {} )
+        LET.ShrinkBoneTbl = ( !reset and LET.ShrinkBoneTbl or {} )
     end
+    SetupLETTable()
 
     -- Gets the position and angles of entity's eyes. Returns false if none is found.
     local function GetEyePosition( ent )
         if ent.IsLambdaPlayer then
-            local eyesData = self:GetAttachmentPoint( "eyes" )
+            local eyesData = LET.Lambda:GetAttachmentPoint( "eyes" )
             local yawLimit = eyesData.Ang.y
             
             if ent:InCombat() and ent:GetIsFiring() then
@@ -103,16 +101,18 @@ if ( CLIENT ) then
     local vector_fullscale = Vector( 1, 1, 1 )
 
     local function ChangeHeadBoneScale( full, target )
-        target = target or self
-        for _, bone in ipairs( targetShrinkBoneTbl ) do
+        target = target or LET.Lambda
+        if !IsValid( target ) then return end
+
+        for _, bone in ipairs( LET.ShrinkBoneTbl ) do
             target:ManipulateBoneScale( bone, ( !full and vector_origin or vector_fullscale ) )
         end
     end
 
     -- Changes the view from first to third or likewise
     net.Receive( "lambdaeyetapper_changeview", function() 
-        ChangeHeadBoneScale( fpMode )
-        fpMode = !fpMode
+        ChangeHeadBoneScale( LET.FirstPersonCam )
+        LET.FirstPersonCam = !LET.FirstPersonCam
     end )
 
     -- Eye tapping main code
@@ -120,62 +120,64 @@ if ( CLIENT ) then
         local entindex = net.ReadInt( 32 )
         if entindex == -1 then 
             ChangeHeadBoneScale( true )
-            ResetEyeTapperInfo()
+            ChangeHeadBoneScale( true, LET.CamTarget )
+            SetupLETTable( true )
             return 
         end -- Exit eye tapping
 
-        if IsValid( self ) and fpMode then
-            snapAngles = true
+        if IsValid( LET.Lambda ) and LET.FirstPersonCam then
+            LET.SnapAngles = true
             ChangeHeadBoneScale( true )
+            ChangeHeadBoneScale( true, LET.CamTarget )
         end
 
-        self = Entity( entindex )
-        if !IsValid( self ) then return end
+        LET.Lambda = Entity( entindex )
+        if !IsValid( LET.Lambda ) then return end
 
-        prevTarget = self
-        targetShrinkBoneTbl = net.ReadTable()
+        LET.PreviousTarget = LET.Lambda
+        LET.ShrinkBoneTbl = net.ReadTable()
 
-        ChangeHeadBoneScale( !fpMode )
+        ChangeHeadBoneScale( !LET.FirstPersonCam )
 
         -- Eye tap HUD showing health, armor, and the Lambda
         hook.Add( "HUDPaint", "lambdaeyetapperHUD", function() 
-            if !IsValid( self ) or ( !IsValid( LocalPlayer() ) or !LocalPlayer():Alive() ) then 
+            if !IsValid( LET.Lambda ) or ( !IsValid( LocalPlayer() ) or !LocalPlayer():Alive() ) then 
                 hook.Remove( "HUDPaint", "lambdaeyetapperHUD" ) 
-                ResetEyeTapperInfo()
+                SetupLETTable( true )
                 return 
             end 
 
             local sw, sh = ScrW(), ScrH()
-            local name = self:GetLambdaName()
-            local color = self:GetDisplayColor()
+            local name = LET.Lambda:GetLambdaName()
+            local color = LET.Lambda:GetDisplayColor()
             
             DrawText( name, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.4 ) , color, TEXT_ALIGN_CENTER )
 
-            if !self:Alive() then
+            if !LET.Lambda:Alive() then
                 DrawText( "*DEAD*", "lambdaplayers_eyetapperfont", ( sw / 2 ), ( sh / 1.35 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
             else
-                DrawText( "State: " .. self:GetState(), "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.35 ) , color, TEXT_ALIGN_CENTER )
+                DrawText( "State: " .. LET.Lambda:GetState(), "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.35 ) , color, TEXT_ALIGN_CENTER )
 
-                local wepName = _LAMBDAPLAYERSWEAPONS[ self:GetWeaponName() ]
+                local wepName = _LAMBDAPLAYERSWEAPONS[ LET.Lambda:GetWeaponName() ]
                 if wepName and wepName.prettyname then
                     wepName = wepName.prettyname
                 else
-                    wepName = self:GetWeaponName()
+                    wepName = LET.Lambda:GetWeaponName()
                 end
                 DrawText( "Weapon: " .. wepName, "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.3 ) , color, TEXT_ALIGN_CENTER )
 
-                local enemy = self:GetEnemy()
-                if IsValid( enemy ) and ( self:IsPanicking() or self:InCombat() ) then
+                local enemy = LET.Lambda:GetEnemy()
+                if IsValid( enemy ) and ( LET.Lambda:IsPanicking() or LET.Lambda:InCombat() ) then
                     local enemyName = ( ( enemy.IsLambdaPlayer or enemy:IsPlayer() ) and enemy:Nick() or language.GetPhrase( "#" .. enemy:GetClass() ) )
                     if enemyName[ 1 ] == "#" then enemyName = enemy:GetClass() end
                     DrawText( "Enemy: " .. enemyName .. " (" .. tostring( enemy ) .. ")", "lambdaplayers_displayname", ( sw / 2 ), ( sh / 1.25 ), color, TEXT_ALIGN_CENTER )
                 end
 
-                local hp = self:GetNW2Float( "lambda_health", "NAN" )
-                hp = ( hp == "NAN" and self:GetNWFloat( "lambda_health", "NAN" ) or hp )
+                local hp = LET.Lambda:GetNW2Float( "lambda_health", "NAN" )
+                hp = ( hp == "NAN" and LET.Lambda:GetNWFloat( "lambda_health", "NAN" ) or hp )
                 
                 local hpW = 2
-                local armor = self:GetArmor()
+                local armor = LET.Lambda:GetArmor()
                 if armor > 0 and displayArmor:GetBool() then
                     hpW = 2.2
                     DrawText( tostring( armor ) .. "%", "lambdaplayers_eyetapperfont", ( sw / 1.8 ), ( sh / 1.2 ) + LambdaScreenScale( 1 + uiscale:GetFloat() ), color, TEXT_ALIGN_CENTER )
@@ -189,22 +191,23 @@ if ( CLIENT ) then
         local vecOffset = Vector( 0, 0, 32 )
         local vecRagOffset = Vector( 0, 0, 16 )
         hook.Add( "CalcView", "lambdaeyetapperCalcView", function( ply, origin, angles, fov, znear, zfar )
-            if !IsValid( self ) or !IsValid( ply ) or !ply:Alive() then 
+            if !IsValid( LET.Lambda ) or !IsValid( ply ) or !ply:Alive() then 
                 hook.Remove( "CalcView", "lambdaeyetapperCalcView" ) 
-                ResetEyeTapperInfo()
+                SetupLETTable( true )
                 return 
             end 
 
-            local ragdoll = self.ragdoll
-            if !IsValid( ragdoll ) then ragdoll = self:GetNW2Entity( "lambda_serversideragdoll" ) end
-            local targetEnt = ( ( self.IsLambdaPlayer and self:GetIsDead() and IsValid( ragdoll ) ) and ragdoll or self )
+            local ragdoll = LET.Lambda.ragdoll
+            if !IsValid( ragdoll ) then ragdoll = LET.Lambda:GetNW2Entity( "lambda_serversideragdoll" ) end
 
             local eyePos, eyeAng
-            local eyeData, yawLimit = GetEyePosition( targetEnt )
             local tpOnDeath = ply:GetInfo( "lambdaeyetapper_tpondeath" )
-            local cameraView = fpMode
+            local cameraView = LET.FirstPersonCam
 
-            if cameraView and ( targetEnt != ragdoll or eyeData and !tobool( tpOnDeath ) ) then
+            LET.CamTarget = ( ( LET.Lambda.IsLambdaPlayer and LET.Lambda:GetNoDraw() and IsValid( ragdoll ) ) and ragdoll or LET.Lambda )
+            local eyeData, yawLimit = GetEyePosition( LET.CamTarget )
+
+            if cameraView and ( LET.CamTarget != ragdoll or eyeData and !tobool( tpOnDeath ) ) then
                 eyePos = eyeData.Pos
                 eyeAng = eyeData.Ang
                 
@@ -217,54 +220,54 @@ if ( CLIENT ) then
                     end
                 end
 
-                if targetEnt != ragdoll then eyeAng.z = 0 end
-                curLookAng = ( ( snapAngles or targetEnt == ragdoll ) and eyeAng or LerpAngle( 6 * FrameTime(), curLookAng, eyeAng ) )
+                if LET.CamTarget != ragdoll then eyeAng.z = 0 end
+                LET.CurrentAngles = ( ( LET.SnapAngles or LET.CamTarget == ragdoll ) and eyeAng or LerpAngle( 6 * FrameTime(), LET.CurrentAngles, eyeAng ) )
             else
                 local aimVec = ply:GetAimVector()
                 local tpZoom = ply:GetInfo( "lambdaeyetapper_tpzoom" )
-                local zOffset = ( targetEnt == ragdoll and vecRagOffset or vecOffset )
+                local zOffset = ( LET.CamTarget == ragdoll and vecRagOffset or vecOffset )
 
-                tracetbl.start = targetEnt:WorldSpaceCenter()
+                tracetbl.start = LET.CamTarget:WorldSpaceCenter()
                 tracetbl.endpos = ( ( tracetbl.start + zOffset ) - aimVec * tpZoom )
-                tracetbl.filter = targetEnt
+                tracetbl.filter = LET.CamTarget
                 local collCheck = Trace( tracetbl )
 
                 cameraView = false
                 eyePos = ( ( tracetbl.start + zOffset ) - aimVec * ( tpZoom * ( collCheck.Fraction - 0.1 ) ) )
                 eyeAng = ply:EyeAngles(); eyeAng.z = 0
-                curLookAng = eyeAng
+                LET.CurrentAngles = eyeAng
             end
 
-            if lastMode != cameraView or targetEnt != prevTarget then
-                if IsValid( prevTarget ) then
-                    ChangeHeadBoneScale( true, prevTarget )
-                    ChangeHeadBoneScale( !cameraView, targetEnt )
+            if LET.LastCamMode != cameraView or LET.CamTarget != LET.PreviousTarget then
+                if IsValid( LET.PreviousTarget ) then
+                    ChangeHeadBoneScale( true, LET.PreviousTarget )
+                    ChangeHeadBoneScale( !cameraView, LET.CamTarget )
                 end
 
-                prevTarget = targetEnt
+                LET.PreviousTarget = LET.CamTarget
             end
 
-            snapAngles = ( cameraView != lastMode or targetEnt == ragdoll )
-            lastMode = cameraView
+            LET.SnapAngles = ( cameraView != LET.LastCamMode or LET.CamTarget == ragdoll )
+            LET.LastCamMode = cameraView
 
-            viewTbl.origin = eyePos
-            viewTbl.angles = curLookAng
-            viewTbl.fov = fov
-            viewTbl.znear = znear
-            viewTbl.zfar = zfar
-            viewTbl.drawviewer = true
+            LET.CalcViewTbl.origin = eyePos
+            LET.CalcViewTbl.angles = LET.CurrentAngles
+            LET.CalcViewTbl.fov = fov
+            LET.CalcViewTbl.znear = znear
+            LET.CalcViewTbl.zfar = zfar
+            LET.CalcViewTbl.drawviewer = true
 
-            return viewTbl
+            return LET.CalcViewTbl
         end )
     end )
 
     -- Builds the tool's spawnmenu settings.
     function TOOL.BuildCPanel( cpanel )
         cpanel:NumSlider( "Third Person Zoom", "lambdaeyetapper_tpzoom", 64, 256, 0 )
-        cpanel:ControlHelp( "Determines how far camera should be from Lambda Player when viewing from third person view." )
+        cpanel:ControlHelp( "Determines how far camera should be from Lambda Player when viewing from the third person view." )
 
         cpanel:CheckBox( "Force Third Person On Death", "lambdaeyetapper_tpondeath" )
-        cpanel:ControlHelp( "If camera view should be in third person while viewing a dead Lambda Player" )
+        cpanel:ControlHelp( "If camera view should be in third person while viewing a currently dead Lambda Player" )
     end
 
 end
