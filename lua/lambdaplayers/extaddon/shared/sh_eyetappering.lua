@@ -6,6 +6,7 @@ local ipairs = ipairs
 local GetHumans = player.GetHumans
 local surface_PlaySound = ( CLIENT and surface.PlaySound )
 local AngleDifference = math.AngleDifference
+local ents_GetAll = ents.GetAll
 
 --
 
@@ -33,14 +34,60 @@ local fixedCamOffset_Forward = CreateClientConVar( "lambdaplayers_eyetapper_fixe
 LET = LET or {}
 
 function LET:SetTarget( target, ply )
-    if !ply and CLIENT then ply = LocalPlayer() end
-    ply:SetNW2Entity( "lambdaeyetap_target", target )
-
     if ( SERVER ) then
+        if IsValid( target ) then
+            local prevTarget = LET:GetTarget( ply )
+            if !IsValid( prevTarget ) then 
+                ply:SetNoTarget( true )
+                ply:DrawShadow( false )
+                ply:SetNoDraw( true )
+                ply:SetMoveType( MOVETYPE_OBSERVER )
+                ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
+                ply:DrawViewModel( false )
+
+                local savedWeps = {}
+                for _, wep in ipairs( ply:GetWeapons() ) do
+                    savedWeps[ #savedWeps + 1 ] = { wep:GetClass(), wep:Clip1(), wep:Clip2() }
+                end
+                ply:StripWeapons()
+
+                LET.PreEyeTapData[ ply ] = {
+                    ply:EyeAngles(),
+                    savedWeps
+                }
+                LET.LastKeyPress[ ply ] = ( CurTime() + 0.5 )
+                LET.InEyeTapMode[ ply ] = true
+
+                for _, ent in ipairs( ents_GetAll() ) do
+                    if ent == ply or !IsValid( ent ) then continue end
+
+                    local isNextbot = ent:IsNextBot()
+                    if !isNextbot and ent:IsNPC() then
+                        if ent:GetEnemy() == ply then
+                            ent:SetEnemy( NULL )
+                        end
+                        ent:ClearEnemyMemory( ply )
+                    elseif isNextbot then
+                        if ent.GetEnemy and ent:GetEnemy() == ply then
+                            ent:SetEnemy( NULL )
+
+                            if ent.IsLambdaPlayer and ent:GetState( "Combat" ) then
+                                ent:CancelMovement()
+                                ent:SetState()
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
         net.Start( "lambdaeyetapper_settarget" )
             net.WriteEntity( target == nil and NULL or target )
         net.Send( ply )
     end
+
+    if !ply and CLIENT then ply = LocalPlayer() end
+    ply:SetNW2Entity( "lambdaeyetap_target", target )
 end
 
 function LET:GetTarget( ply )
@@ -564,10 +611,21 @@ if ( CLIENT ) then
         if IsValid( LET:GetTarget() ) then return false end
     end
 
+    local hideElements = {
+        [ "CHudBattery" ] = true,
+        [ "CHudHealth" ] = true,
+        [ "CHudSuitPower" ] = true,
+        [ "CHUDQuickInfo" ] = true,
+        [ "CHudDamageIndicator" ] = true,
+        [ "CHudPoisonDamageIndicator" ] = true,
+        [ "CHudSquadStatus" ] = true,
+        [ "CHudFlashlight" ] = true,
+        [ "CHudLocator" ] = true
+    }
     local function HideDefaultHUD( elementName )
         local target = LET:GetTarget()
         if !IsValid( target ) then return end
-        if elementName == "CHudBattery" or elementName == "CHudHealth" then return false end
+        if hideElements[ elementName ] then return false end
         if elementName == "CHudCrosshair" then return ( LET.CameraMode != 1 and !target:GetIsDead() ) end
     end
 
@@ -602,7 +660,6 @@ end
 
 if ( SERVER ) then
     local AddOriginToPVS = AddOriginToPVS
-    local ents_GetAll = ents.GetAll
     local table_Reverse = table.Reverse
     local table_KeyFromValue = table.KeyFromValue
 
@@ -617,56 +674,14 @@ if ( SERVER ) then
     local function OnServerThink()
         for _, ply in ipairs( GetHumans() ) do
             local target = LET:GetTarget( ply )
-            local inEyeTap = IsValid( target )
+            if !IsValid( target ) then 
+                if LET.InEyeTapMode[ ply ] then
+                    LET.InEyeTapMode[ ply ] = false
 
-            if LET.InEyeTapMode[ ply ] != inEyeTap then
-                if inEyeTap then 
-                    ply:SetNoTarget( true )
-                    ply:DrawShadow( false )
-                    ply:SetNoDraw( true )
-                    ply:SetMoveType( MOVETYPE_OBSERVER )
-                    ply:GodEnable()
-                    ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
-                    ply:DrawViewModel( false )
-                    LET.LastKeyPress[ ply ] = ( CurTime() + 0.5 )
-                    
-                    local savedWeps = {}
-                    for _, wep in ipairs( ply:GetWeapons() ) do
-                        savedWeps[ #savedWeps + 1 ] = { wep:GetClass(), wep:Clip1(), wep:Clip2() }
-                    end
-                    ply:StripWeapons()
-
-                    LET.PreEyeTapData[ ply ] = {
-                        ply:EyeAngles(),
-                        savedWeps
-                    }
-
-                    for _, ent in ipairs( ents_GetAll() ) do
-                        if ent == ply or !IsValid( ent ) then continue end
-        
-                        local isNextbot = ent:IsNextBot()
-                        if !isNextbot and ent:IsNPC() then
-                            if ent:GetEnemy() == ply then
-                                ent:SetEnemy( NULL )
-                            end
-                            ent:ClearEnemyMemory( ply )
-                        elseif isNextbot then
-                            if ent.GetEnemy and ent:GetEnemy() == ply then
-                                ent:SetEnemy( NULL )
-
-                                if ent.IsLambdaPlayer and ent:GetState( "Combat" ) then
-                                    ent:CancelMovement()
-                                    ent:SetState()
-                                end
-                            end
-                        end
-                    end
-                else
                     ply:SetNoTarget( false )
                     ply:DrawShadow( true )
                     ply:SetNoDraw( false )
                     ply:SetMoveType( MOVETYPE_WALK )
-                    ply:GodDisable()
                     ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
                     ply:DrawViewModel( true )
                     
@@ -689,13 +704,11 @@ if ( SERVER ) then
                         end
                     end
                 end
-            end
-
-            local lastPress = LET.LastKeyPress[ ply ]
-            if inEyeTap then 
+            else 
                 target:SetNW2Int( "lambdaeyetap_weaponcurrentclip", target.l_Clip )
                 target:SetNW2String( "lambdaeyetap_chattyped", ( target.l_queuedtext != nil and target.l_typedtext or nil ) )
-
+                
+                local lastPress = LET.LastKeyPress[ ply ]
                 if CurTime() >= lastPress then
                     local keyPressed = false
                     
@@ -746,8 +759,6 @@ if ( SERVER ) then
                     end
                 end
             end
-
-            LET.InEyeTapMode[ ply ] = inEyeTap
         end
     end
 
@@ -784,7 +795,7 @@ if ( SERVER ) then
     end
 
     local function OnPlayerDeath( ply )
-        if IsValid( LET:GetTarget( ply ) ) then LET:SetTarget( nil, ply ) end
+        if LET.InEyeTapMode[ ply ] then LET:SetTarget( nil, ply ) end
     end
 
     local function OnLambdaKilled( lambda, dmginfo )
@@ -807,6 +818,24 @@ if ( SERVER ) then
     hook.Add( "PlayerDeath", "LambdaET_OnPlayerDeath", OnPlayerDeath )
     hook.Add( "LambdaOnKilled", "LambdaET_OnLambdaKilled", OnLambdaKilled )
     hook.Add( "LambdaOnSwitchWeapon", "LambdaET_OnLambdaSwitchWeapon", OnLambdaSwitchWeapon )
+
+    -- what da heeeeeeeeeeeeeeeeeeeeeell oh maaah gawd noo waaaaaaaayy~ --
+
+    local function OnPlayerDisallowStuff( ply )
+        if LET.InEyeTapMode[ ply ] then return false end
+    end
+
+    hook.Add( "PlayerShouldTakeDamage", "LambdaET_OnPlayerShouldTakeDamage", OnPlayerDisallowStuff )
+    hook.Add( "PlayerShouldTaunt", "LambdaET_OnPlayerShouldTaunt", OnPlayerDisallowStuff )
+    hook.Add( "CanPlayerEnterVehicle", "LambdaET_OnPlayerCanEnterVehicle", OnPlayerDisallowStuff )
+    hook.Add( "PlayerUse", "LambdaET_OnPlayerUse", OnPlayerDisallowStuff )
+    hook.Add( "PlayerCanPickupItem", "LambdaET_OnPlayerCanPickupItem", OnPlayerDisallowStuff )
+    hook.Add( "PlayerCanPickupWeapon", "LambdaET_OnPlayerCanPickupWeapon", OnPlayerDisallowStuff )
+    hook.Add( "PlayerNoClip", "LambdaET_OnPlayerNoClip", OnPlayerDisallowStuff )
+    hook.Add( "PlayerSpray", "LambdaET_OnPlayerSpray", OnPlayerDisallowStuff )
+    hook.Add( "PlayerSwitchFlashlight", "LambdaET_OnPlayerSwitchFlashlight", OnPlayerDisallowStuff )
+    hook.Add( "AllowPlayerPickup", "LambdaET_OnAllowPlayerPickup", OnPlayerDisallowStuff )
+    hook.Add( "PlayerSwitchWeapon", "LambdaET_OnPlayerSwitchWeapon", OnPlayerDisallowStuff )
 end
 
 local function OnLambdaRemoved( lambda )
