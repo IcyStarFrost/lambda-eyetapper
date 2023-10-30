@@ -35,46 +35,43 @@ LET = LET or {}
 
 function LET:SetTarget( target, ply )
     if ( SERVER ) then
-        if IsValid( target ) then
-            local prevTarget = LET:GetTarget( ply )
-            if !IsValid( prevTarget ) then 
-                ply:SetNoTarget( true )
-                ply:DrawShadow( false )
-                ply:SetNoDraw( true )
-                ply:SetMoveType( MOVETYPE_OBSERVER )
-                ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
-                ply:DrawViewModel( false )
+        if !LET.InEyeTapMode[ ply ] and IsValid( target ) then
+            ply:SetNoTarget( true )
+            ply:DrawShadow( false )
+            ply:SetNoDraw( true )
+            ply:SetMoveType( MOVETYPE_OBSERVER )
+            ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
+            ply:DrawViewModel( false )
 
-                local savedWeps = {}
-                for _, wep in ipairs( ply:GetWeapons() ) do
-                    savedWeps[ #savedWeps + 1 ] = { wep:GetClass(), wep:Clip1(), wep:Clip2() }
-                end
-                ply:StripWeapons()
+            local savedWeps = {}
+            for _, wep in ipairs( ply:GetWeapons() ) do
+                savedWeps[ #savedWeps + 1 ] = { wep:GetClass(), wep:Clip1(), wep:Clip2() }
+            end
+            ply:StripWeapons()
 
-                LET.PreEyeTapData[ ply ] = {
-                    ply:EyeAngles(),
-                    savedWeps
-                }
-                LET.LastKeyPress[ ply ] = ( CurTime() + 0.5 )
-                LET.InEyeTapMode[ ply ] = true
+            LET.PreEyeTapData[ ply ] = {
+                ply:EyeAngles(),
+                savedWeps
+            }
+            LET.LastKeyPress[ ply ] = ( CurTime() + 0.5 )
+            LET.InEyeTapMode[ ply ] = true
 
-                for _, ent in ipairs( ents_GetAll() ) do
-                    if ent == ply or !IsValid( ent ) then continue end
+            for _, ent in ipairs( ents_GetAll() ) do
+                if ent == ply or !IsValid( ent ) then continue end
 
-                    local isNextbot = ent:IsNextBot()
-                    if !isNextbot and ent:IsNPC() then
-                        if ent:GetEnemy() == ply then
-                            ent:SetEnemy( NULL )
-                        end
-                        ent:ClearEnemyMemory( ply )
-                    elseif isNextbot then
-                        if ent.GetEnemy and ent:GetEnemy() == ply then
-                            ent:SetEnemy( NULL )
+                local isNextbot = ent:IsNextBot()
+                if !isNextbot and ent:IsNPC() then
+                    if ent:GetEnemy() == ply then
+                        ent:SetEnemy( NULL )
+                    end
+                    ent:ClearEnemyMemory( ply )
+                elseif isNextbot then
+                    if ent.GetEnemy and ent:GetEnemy() == ply then
+                        ent:SetEnemy( NULL )
 
-                            if ent.IsLambdaPlayer and ent:GetState( "Combat" ) then
-                                ent:CancelMovement()
-                                ent:SetState()
-                            end
+                        if ent.IsLambdaPlayer and ent:GetState( "Combat" ) then
+                            ent:CancelMovement()
+                            ent:SetState()
                         end
                     end
                 end
