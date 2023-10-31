@@ -7,6 +7,7 @@ local GetHumans = player.GetHumans
 local surface_PlaySound = ( CLIENT and surface.PlaySound )
 local AngleDifference = math.AngleDifference
 local ents_GetAll = ents.GetAll
+local CurTime = CurTime
 
 --
 
@@ -179,7 +180,7 @@ if ( CLIENT ) then
         local force = net.ReadFloat()
         local num = net.ReadUInt( 12 )
 
-        local punch = ( ( force / ( camMode != 3 and 5 or 4 ) ) * num )
+        local punch = ( ( force / ( camMode != 3 and 6 or 5 ) ) * num )
         LET.ViewAngles:RotateAroundAxis( LET.ViewAngles:Right(), punch )
     end )
 
@@ -274,10 +275,8 @@ if ( CLIENT ) then
         local scoreBind = input_LookupBinding( "+scoreboard" )
         local keyDown = input_IsKeyDown( scoreBind and input_GetKeyCode( scoreBind ) or KEY_TAB )
         if keyDown then
-            if CurTime() >= hintsTime then
-                hintsTime = ( CurTime() + 0.1 )
-                LET.HUD_HintsTime = hintsTime
-            end
+            hintsTime = max( hintsTime, CurTime() + FrameTime() )
+            LET.HUD_HintsTime = hintsTime
         end
 
         local hintsWidth = LET.HUD_HintsWidth
@@ -403,18 +402,18 @@ if ( CLIENT ) then
                 DrawText( "Armor", "letfont_hparmor_text", scrW / 4.45, scrH / 1.175, dispClr, TEXT_ALIGN_CENTER )
                 DrawText( apPerc, "letfont_hparmor", scrW / 4.45, scrH / 1.15, dispClr, TEXT_ALIGN_CENTER )
             end
+        end
 
-            local chatTyping = target:GetNW2String( "lambdaeyetap_chattyped" )
-            if chatTyping and chatTyping != "" then
-                RoundedBoxEx( 10, scrW / 20, scrH / 1.46, 75, 25, hudBoxClr, true, true, false, false )
-                DrawText( "Typing:", "letfont_chatfont", scrW / 18, scrH / 1.45, dispClr, TEXT_ALIGN_LEFT )
+        local chatTyping = target:GetNW2String( "lambdaeyetap_chattyped" )
+        if chatTyping and chatTyping != "" then
+            RoundedBoxEx( 10, scrW / 20, scrH / 1.46, 75, 25, hudBoxClr, true, true, false, false )
+            DrawText( "Typing:", "letfont_chatfont", scrW / 18, scrH / 1.45, dispClr, TEXT_ALIGN_LEFT )
 
-                SetTextFont( "letfont_chatfont" )
-                local textSize = max( 75, GetTextFontSize( chatTyping ) + 20 )
+            SetTextFont( "letfont_chatfont" )
+            local textSize = max( 75, GetTextFontSize( chatTyping ) + 20 )
 
-                RoundedBoxEx( 10, scrW / 20, scrH / 1.395, textSize, 25, hudBoxClr, false, ( textSize > 75 ), true, true )
-                DrawText( chatTyping, "letfont_chatfont", scrW / 18, scrH / 1.3925, dispClr, TEXT_ALIGN_LEFT )
-            end
+            RoundedBoxEx( 10, scrW / 20, scrH / 1.395, textSize, 25, hudBoxClr, false, ( textSize > 75 ), true, true )
+            DrawText( chatTyping, "letfont_chatfont", scrW / 18, scrH / 1.3875, dispClr, TEXT_ALIGN_LEFT )
         end
     end
 
@@ -451,7 +450,7 @@ if ( CLIENT ) then
         local target = lambda
         local lastTarget = LET.LastCamTarget
         if target != lastTarget then
-            LET.IsFollowingKiller = false
+            LET.FollowKillerTime = false
             LET.LastCamTarget = target
             if IsValid( lastTarget ) then LET:DrawTargetHead( lastTarget, true ) end
         end
@@ -536,12 +535,12 @@ if ( CLIENT ) then
                         if IsValid( killerRag ) then followPos = killerRag:WorldSpaceCenter() end
                     end
 
-                    local startTime = LET.IsFollowingKiller
+                    local startTime = LET.FollowKillerTime
                     if startTime == false or startTime and ( CurTime() - startTime ) <= followTime then
                         camAng = LerpAngle( 0.075, viewAng, ( followPos - viewPos ):Angle() )
-                        LET.IsFollowingKiller = startTime or CurTime()
+                        LET.FollowKillerTime = startTime or CurTime()
                     elseif startTime != nil then
-                        LET.IsFollowingKiller = nil
+                        LET.FollowKillerTime = nil
                         LET:SetCamInterpTime( 3 )
                     end
                 end
@@ -579,10 +578,14 @@ if ( CLIENT ) then
         if smoothCamera:GetBool() then
             local duration = LET.CamInterpEndTime
             local timeElapsed = ( CurTime() - LET.CamInterpStartTime )
-            local lerpFact = ( timeElapsed < duration and ( timeElapsed / duration ) or 1 )
-
-            LET.ViewPosition = LerpVector( lerpFact, LET.ViewPosition, viewPos )
-            LET.ViewAngles = LerpAngle( lerpFact, LET.ViewAngles, viewAng )
+            local lerpFact = ( timeElapsed / duration )
+            if lerpFact >= 1 then
+                LET.ViewPosition = viewPos
+                LET.ViewAngles = viewAng
+            else
+                LET.ViewPosition = LerpVector( lerpFact, LET.ViewPosition, viewPos )
+                LET.ViewAngles = LerpAngle( lerpFact, LET.ViewAngles, viewAng )
+            end
 
             local viewFOV = LET.ViewFOV
             LET.ViewFOV = ( !viewFOV and camFov or Lerp( lerpFact, viewFOV, camFov ) )
@@ -632,18 +635,23 @@ if ( CLIENT ) then
         local target = LET:GetTarget()
         if !IsValid( target ) then return end
 
-        local enemy = target:GetEnemy()
-        if !target:InCombat() and !target:IsPanicking() or !IsValid( enemy ) then
-            enemy = LET:GetKiller( target )
-            if !target:GetIsDead() or !IsValid( enemy ) then return end
+        local enemy = LET:GetKiller( target )
+        if !target:GetIsDead() or !IsValid( enemy ) then
+            enemy = target:GetEnemy()
+            if !target:InCombat() and !target:IsPanicking() or !IsValid( enemy ) then return end
+        end
 
-            if ( enemy.IsLambdaPlayer or enemy:IsPlayer() ) and !enemy:Alive() then
+        local haloClr = target:GetDisplayColor()
+        if enemy.IsLambdaPlayer or enemy:IsPlayer() then 
+            haloClr = enemy:GetPlayerColor():ToColor()
+
+            if !enemy:Alive() then
                 local killerRag = enemy:GetRagdollEntity()
                 if IsValid( killerRag ) then enemy = killerRag end
             end
         end
 
-        halo_Add( { enemy }, target:GetDisplayColor(), 1, 1, 1, true, true )
+        halo_Add( { enemy }, haloClr, 1, 1, 1, true, true )
     end
 
     hook.Add( "HUDPaint", "LambdaET_DrawHUD", DrawHUD )
@@ -797,7 +805,7 @@ if ( SERVER ) then
 
     local function OnLambdaKilled( lambda, dmginfo )
         local attacker = dmginfo:GetAttacker()
-        if attacker == lambda or !LambdaIsValid( attacker ) or !attacker:IsNPC() and !attacker:IsNextBot() and !attacker:IsPlayer() then 
+        if attacker == lambda or !IsValid( attacker ) or !attacker:IsNPC() and !attacker:IsNextBot() and !attacker:IsPlayer() then 
             LET:SetKiller( lambda, NULL )
             return 
         end
