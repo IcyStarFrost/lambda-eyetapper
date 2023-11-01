@@ -41,6 +41,9 @@ if ( CLIENT ) then
         panel:CheckBox( "Enable View Punching", "lambdaplayers_eyetapper_viewpunching" )
         panel:ControlHelp( "If the camera view should receive a punch when the Lambda Player's weapon fires a bullet similar to real player one" )
 
+        panel:CheckBox( "Include Weapon's Category In HUD", "lambdaplayers_eyetapper_weaponoriginonname" )
+        panel:ControlHelp( "If Lambda Player's weapon name on HUD should also include the category its located in" )
+
         panel:CheckBox( "Use Custom First Person FOV", "lambdaplayers_eyetapper_usecustomfpfov" )
         panel:ControlHelp( "Should the first person camera view use custom field of view instead of the user one" )
 

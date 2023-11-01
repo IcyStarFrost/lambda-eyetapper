@@ -18,6 +18,7 @@ local dontStopOnTargetDeleted = CreateClientConVar( "lambdaplayers_eyetapper_don
 local viewPunching = CreateClientConVar( "lambdaplayers_eyetapper_viewpunching", "1", true, false, "If the camera view should receive a punch when the Lambda Player's weapon fires a bullet similar to real player one", 0, 1 )
 local forcetpontaunt = CreateClientConVar( "lambdaplayers_eyetapper_forcetpontaunting", "0", true, false, "If the camera should be forced from first person to third person when the Lambda Player is playing special animation", 0, 1 )
 local drawHaloOnEnemy = CreateClientConVar( "lambdaplayers_eyetapper_drawhaloonenemy", "1", true, false, "If Lambda Player's current enemy/killer should have halo on them for user's easier tracking", 0, 1 )
+local weaponOriginOnName = CreateClientConVar( "lambdaplayers_eyetapper_weaponoriginonname", "1", true, false, "If weapon's name on HUD should also display the category its located in", 0, 1 )
 
 local useCustomFPFov = CreateClientConVar( "lambdaplayers_eyetapper_usecustomfpfov", "0", true, false, "Should the first person camera view use custom field of view instead of the user one", 0, 1 )
 local firstPersonFov = CreateClientConVar( "lambdaplayers_eyetapper_fpfov", "90", true, false, "Custom first person camera view field of view", 0, 180 )
@@ -333,7 +334,7 @@ if ( CLIENT ) then
         if enemyInfo then DrawText( enemyInfo, "letfont_aiinfo", ( scrW / 2 ), ( scrH / 8.75 ), dispClr, TEXT_ALIGN_CENTER ) end
 
 		if !isDead then
-            local wepName = target:GetNW2String( "lambdaeyetap_weaponname", "Holster" )
+            local wepName = target:GetNW2String( ( !weaponOriginOnName:GetBool() and "lambda_weaponprettyname" or "lambdaeyetap_weaponname" ), "Holster" )
             if wepName and wepName != "Holster" then
                 SetTextFont( "letfont_wpnname" )
                 boxWidth = GetTextFontSize( wepName ) + 15
@@ -353,10 +354,10 @@ if ( CLIENT ) then
                     boxWidth = max( max( boxWidth, reloadSize + 15 ), ( GetTextFontSize( clipText ) + 15 ) )
 
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
-                    local offscreenX = max( ( boxX + boxWidth ) - scrW, 0 )
+                    local offscreenX = max( ( boxX + boxWidth + 25 ) - scrW, 0 )
                     RoundedBox( 10, ( boxX - offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), 75, hudBoxClr )
                     
-                    local offWepX = ( ( scrW / 1.155 ) - offscreenX )
+                    local offWepX = ( ( scrW / 1.155 ) - offscreenX * 1.5 )
                     DrawText( wepName, "letfont_wpnname", offWepX, scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
 
                     if target:GetIsReloading() then
@@ -372,8 +373,8 @@ if ( CLIENT ) then
                 else
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
                     local offscreenX = max( ( boxX + boxWidth ) - scrW, 0 )
-                    RoundedBox( 10, ( boxX - offscreenX ), scrH / 1.1825, ( boxWidth - offscreenX ), 35, hudBoxClr )
-                    DrawText( wepName, "letfont_wpnname", ( ( scrW / 1.155 ) - offscreenX ), scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
+                    RoundedBox( 10, ( boxX + offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), 35, hudBoxClr )
+                    DrawText( wepName, "letfont_wpnname", ( ( scrW / 1.155 ) - offscreenX * 1.5 ), scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
                 end
             end
 
@@ -814,7 +815,7 @@ if ( SERVER ) then
 
     local function OnLambdaSwitchWeapon( lambda, wepent, wpnData )
         lambda:SetNW2Int( "lambdaeyetap_weaponmaxclip", lambda.l_MaxClip )
-        lambda:SetNW2Int( "lambdaeyetap_weaponname", wpnData.prettyname )
+        lambda:SetNW2String( "lambdaeyetap_weaponname", wpnData.prettyname )
     end
 
     hook.Add( "Think", "LamndaET_OnServerThink", OnServerThink )
