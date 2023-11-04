@@ -407,13 +407,15 @@ if ( CLIENT ) then
 
         local chatTyping = target:GetNW2String( "lambdaeyetap_chattyped" )
         if chatTyping and chatTyping != "" then
-            RoundedBoxEx( 10, scrW / 20, scrH / 1.46, 75, 25, hudBoxClr, true, true, false, false )
+            local boxHeight = LambdaScreenScale( 11.25 )
+
+            RoundedBoxEx( 10, scrW / 20, scrH / 1.46, 90, boxHeight, hudBoxClr, true, true, false, false )
             DrawText( "Typing:", "letfont_chatfont", scrW / 18, scrH / 1.45, dispClr, TEXT_ALIGN_LEFT )
 
             SetTextFont( "letfont_chatfont" )
-            local textSize = max( 75, GetTextFontSize( chatTyping ) + 20 )
+            local textSize = max( 90, GetTextFontSize( chatTyping ) + 20 )
 
-            RoundedBoxEx( 10, scrW / 20, scrH / 1.395, textSize, 25, hudBoxClr, false, ( textSize > 75 ), true, true )
+            RoundedBoxEx( 10, scrW / 20, scrH / 1.395, textSize, boxHeight, hudBoxClr, false, ( textSize > 75 ), true, true )
             DrawText( chatTyping, "letfont_chatfont", scrW / 18, scrH / 1.3875, dispClr, TEXT_ALIGN_LEFT )
         end
     end
