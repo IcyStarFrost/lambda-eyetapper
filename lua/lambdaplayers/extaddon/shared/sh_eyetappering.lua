@@ -282,11 +282,11 @@ if ( CLIENT ) then
 
         local hintsWidth = LET.HUD_HintsWidth
         local isHiding = ( CurTime() >= hintsTime )
-        local slideLerp = Lerp( FrameTime() * ( isHiding and 2 or 3 ), hintsWidth, ( isHiding and -10 or 275 ) )
+        local slideLerp = Lerp( FrameTime() * ( isHiding and 2 or 3 ), hintsWidth, ( isHiding and -10 or LambdaScreenScale( 115 ) ) )
         LET.HUD_HintsWidth = slideLerp
 
         if hintsWidth >= 0 then
-            RoundedBox( 10, scrW - slideLerp, scrH / 2.5, 250, 117.5, hudBoxClr )
+            RoundedBox( 10, scrW - slideLerp, scrH / 2.5, LambdaScreenScale( 110 ), LambdaScreenScale( 55 ), hudBoxClr )
             DrawText( "LMB - Next Tap Target", "letfont_instructions", scrW - slideLerp + 7.5, scrH / 2.466, dispClr, TEXT_ALIGN_LEFT )
             DrawText( "RMB - Previous Tap Target", "letfont_instructions", scrW - slideLerp + 7.5, scrH / 2.3, dispClr, TEXT_ALIGN_LEFT )
             DrawText( "Space - Change Camera View", "letfont_instructions", scrW - slideLerp + 7.5, scrH / 2.166, dispClr, TEXT_ALIGN_LEFT )
@@ -297,7 +297,7 @@ if ( CLIENT ) then
         local lambdaName = target:GetLambdaName()
         SetTextFont( "letfont_lambdaname" )
         local boxWidth = GetTextFontSize( lambdaName ) + 25
-        local boxHeight = 40
+        local boxHeight = 17.5
         
         local stateInfo, enemyInfo
         local isDead = target:GetIsDead()
@@ -305,7 +305,7 @@ if ( CLIENT ) then
             stateInfo = "State: " .. target:GetState()
             SetTextFont( "letfont_aiinfo" )
             boxWidth = max( boxWidth, GetTextFontSize( stateInfo ) + 15 )
-            boxHeight = ( boxHeight + 15 )
+            boxHeight = ( boxHeight + 7.5 )
 
             if target:InCombat() or target:IsPanicking() then
                 enemyInfo = target:GetEnemy()
@@ -321,14 +321,14 @@ if ( CLIENT ) then
 
                     enemyInfo = "Enemy: " .. enemyName
                     boxWidth = max( boxWidth, GetTextFontSize( enemyInfo ) + 15 )
-                    boxHeight = ( boxHeight + 17.5 )
+                    boxHeight = ( boxHeight + 10 )
                 else
                     enemyInfo = nil
                 end
             end
         end
 
-        RoundedBox( 10, ( ( scrW - boxWidth ) / 2 ), scrH / 20, boxWidth + 2.5, boxHeight, hudBoxClr )
+        RoundedBox( 10, ( ( scrW - boxWidth ) / 2 ), scrH / 20, boxWidth + 2.5, LambdaScreenScale( boxHeight ), hudBoxClr )
         DrawText( lambdaName, "letfont_lambdaname", ( scrW / 2 ), ( scrH / 17.5 ), dispClr, TEXT_ALIGN_CENTER )
         if stateInfo then DrawText( stateInfo, "letfont_aiinfo", ( scrW / 2 ), ( scrH / 11.15 ), dispClr, TEXT_ALIGN_CENTER ) end
         if enemyInfo then DrawText( enemyInfo, "letfont_aiinfo", ( scrW / 2 ), ( scrH / 8.75 ), dispClr, TEXT_ALIGN_CENTER ) end
@@ -355,7 +355,7 @@ if ( CLIENT ) then
 
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
                     local offscreenX = max( ( boxX + boxWidth + 25 ) - scrW, 0 )
-                    RoundedBox( 10, ( boxX - offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), 75, hudBoxClr )
+                    RoundedBox( 10, ( boxX - offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), LambdaScreenScale( 35 ), hudBoxClr )
                     
                     local offWepX = ( ( scrW / 1.155 ) - offscreenX * 1.5 )
                     DrawText( wepName, "letfont_wpnname", offWepX, scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
@@ -373,7 +373,7 @@ if ( CLIENT ) then
                 else
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
                     local offscreenX = max( ( boxX + boxWidth ) - scrW, 0 )
-                    RoundedBox( 10, ( boxX + offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), 35, hudBoxClr )
+                    RoundedBox( 10, ( boxX + offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), LambdaScreenScale( 15 ), hudBoxClr )
                     DrawText( wepName, "letfont_wpnname", ( ( scrW / 1.155 ) - offscreenX * 1.5 ), scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
                 end
             end
@@ -387,7 +387,7 @@ if ( CLIENT ) then
             SetTextFont( "letfont_hparmor_text" )
             hpSize = max( hpSize, GetTextFontSize( "Health" ) + 20 )
 
-            RoundedBox( 10, ( scrW / 11.1 ) - hpSize / 2, scrH / 1.1825, hpSize, 80, hudBoxClr )
+            RoundedBox( 10, ( scrW / 11.1 ) - hpSize / 2, scrH / 1.1825, hpSize, LambdaScreenScale( 35 ), hudBoxClr )
             DrawText( "Health", "letfont_hparmor_text", scrW / 11.1, scrH / 1.175, dispClr, TEXT_ALIGN_CENTER )
             DrawText( hpPerc, "letfont_hparmor", scrW / 11.1, scrH / 1.15, dispClr, TEXT_ALIGN_CENTER )
 
@@ -399,7 +399,7 @@ if ( CLIENT ) then
                 SetTextFont( "letfont_hparmor_text" )
                 apSize = max( apSize, GetTextFontSize( "Armor" ) + 20 )
     
-                RoundedBox( 10, ( scrW / 4.45 ) - apSize / 2 , scrH / 1.1825, apSize, 80, hudBoxClr )
+                RoundedBox( 10, ( scrW / 4.45 ) - apSize / 2 , scrH / 1.1825, apSize, LambdaScreenScale( 35 ), hudBoxClr )
                 DrawText( "Armor", "letfont_hparmor_text", scrW / 4.45, scrH / 1.175, dispClr, TEXT_ALIGN_CENTER )
                 DrawText( apPerc, "letfont_hparmor", scrW / 4.45, scrH / 1.15, dispClr, TEXT_ALIGN_CENTER )
             end
