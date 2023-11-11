@@ -31,6 +31,10 @@ local fixedCamOffset_Up = CreateClientConVar( "lambdaplayers_eyetapper_fixedcamo
 local fixedCamOffset_Right = CreateClientConVar( "lambdaplayers_eyetapper_fixedcamoffset_right", "0", true, false, "The right offset of the camera when using the fixed camera mode.", -500, 500 )
 local fixedCamOffset_Forward = CreateClientConVar( "lambdaplayers_eyetapper_fixedcamoffset_forward", "-100", true, false, "The forward offset of the camera when using the fixed camera mode.", -500, 500 )
 
+local fpCamOffset_Up = CreateClientConVar( "lambdaplayers_eyetapper_fpcamoffset_up", "0", true, false, "The up offset of the camera when using the first person camera mode.", -500, 500 )
+local fpCamOffset_Right = CreateClientConVar( "lambdaplayers_eyetapper_fpcamoffset_right", "0", true, false, "The right offset of the camera when using the first person camera mode.", -500, 500 )
+local fpCamOffset_Forward = CreateClientConVar( "lambdaplayers_eyetapper_fpcamoffset_forward", "0", true, false, "The forward offset of the camera when using the first person camera mode.", -500, 500 )
+
 --
 
 LET = LET or {}
@@ -144,7 +148,7 @@ if ( CLIENT ) then
     local input_LookupBinding = input.LookupBinding
     local input_GetKeyCode = input.GetKeyCode
 
-    local calcViewTbl = {}
+    local calcViewTbl = { drawviewer = true }
     local camTrTbl = { filter = {}, mins = Vector( -10, -10, -5 ), maxs = Vector( 10, 10, 5 ) }
     local camOffVec = Vector()
     local hudBoxClr = Color( 0, 0, 0, 125 )
@@ -491,13 +495,16 @@ if ( CLIENT ) then
         local targEyes = lambda:GetAttachmentPoint( "eyes", target )
         local facePos = lambda:GetNW2Vector( "lambda_facepos" )
         if camMode == 3 then
+            local camOffset = ( viewAng:Forward() * fpCamOffset_Forward:GetInt() + viewAng:Right() * fpCamOffset_Right:GetInt() + viewAng:Up() * fpCamOffset_Up:GetInt() )            
+            viewPos = ( targEyes.Pos + camOffset )
+
             local eyeAng = targEyes.Ang
             if !isRagdoll and !isTaunting then 
                 local pitchLimit = target:GetAngles().x
                 local yawLimit = target:GetAngles().y
                 
                 if !facePos:IsZero() then
-                    eyeAng = ( facePos - targEyes.Pos ):Angle()
+                    eyeAng = ( facePos - viewPos ):Angle()
                 else
                     eyeAng.y = target:GetAngles().y
                 end
@@ -518,9 +525,7 @@ if ( CLIENT ) then
                 eyeAng.z = 0
                 eyeAng = LerpAngle( 0.2, viewAng, eyeAng )
             end
-            
             viewAng = eyeAng
-            viewPos = targEyes.Pos
         else
             local targPos = ( ( isRagdoll or camMode == 1 ) and target:WorldSpaceCenter() or targEyes.Pos )
             local camHeight = ( !isRagdoll and ( camMode == 1 and 32 or 8 ) or 16 )
@@ -602,7 +607,7 @@ if ( CLIENT ) then
             viewFOV = fov
         end
 
-        LET:DrawTargetHead( target, ( LET.ViewPosition:DistToSqr( targEyes.Pos ) > 144 or isRagdoll and camMode != 3 ) )
+        LET:DrawTargetHead( target, ( LET.ViewPosition:DistToSqr( camMode == 3 and viewPos or targEyes.Pos ) > 144 or isRagdoll and camMode != 3 ) )
 
         calcViewTbl.origin = LET.ViewPosition
         calcViewTbl.angles = LET.ViewAngles

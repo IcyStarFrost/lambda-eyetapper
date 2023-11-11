@@ -18,8 +18,32 @@ if ( CLIENT ) then
     language.Add( "tool.lambdaeyetapper.left", "Fire onto a Lambda Player to see what they are seeing" )
     language.Add( "tool.lambdaeyetapper.right", "Press to tap into a random Lambda Player's view" )
 
+    local cvarList = {
+        [ "lambdaplayers_eyetapper_smoothcamera" ] = "1",
+        [ "lambdaplayers_eyetapper_followkillertime" ] = "0",
+        [ "lambdaplayers_eyetapper_switchfromfpondeath" ] = "0",
+        [ "lambdaplayers_eyetapper_dontquitontargetdeleted" ] = "1",
+        [ "lambdaplayers_eyetapper_viewpunching" ] = "1",
+        [ "lambdaplayers_eyetapper_forcetpontaunting" ] = "0",
+        [ "lambdaplayers_eyetapper_drawhaloonenemy" ] = "1",
+        [ "lambdaplayers_eyetapper_weaponoriginonname" ] = "1",
+        [ "lambdaplayers_eyetapper_usecustomfpfov" ] = "0",
+        [ "lambdaplayers_eyetapper_fpfov" ] = "90",
+        [ "lambdaplayers_eyetapper_tpcamoffset_up" ] = "0",
+        [ "lambdaplayers_eyetapper_tpcamoffset_right" ] = "0",
+        [ "lambdaplayers_eyetapper_tpcamoffset_forward" ] = "-100",
+        [ "lambdaplayers_eyetapper_fixedcamoffset_up" ] = "0",
+        [ "lambdaplayers_eyetapper_fixedcamoffset_right" ] = "0",
+        [ "lambdaplayers_eyetapper_fixedcamoffset_forward" ] = "-100",
+        [ "lambdaplayers_eyetapper_fpcamoffset_up" ] = "0",
+        [ "lambdaplayers_eyetapper_fpcamoffset_right" ] = "0",
+        [ "lambdaplayers_eyetapper_fpcamoffset_forward" ] = "0",
+    }
+
     -- Builds the tool's spawnmenu settings.
     function TOOL.BuildCPanel( panel )
+        panel:ToolPresets( "lambdaeyetapper", cvarList )
+        
         panel:CheckBox( "Smooth Camera View Switching", "lambdaplayers_eyetapper_smoothcamera" )
         panel:ControlHelp( "If the camera should switch between views smoothly by the use of interpolation" )
 
@@ -51,14 +75,19 @@ if ( CLIENT ) then
         panel:ControlHelp( "Custom first person camera view field of view" )
 
         panel:Help( "Third Person Camera Offsets:" )
-        panel:NumSlider( "Camera Offset - Up", "lambdaplayers_eyetapper_tpcamoffset_up", -500, 500, 0 )
-        panel:NumSlider( "Camera Offset - Right", "lambdaplayers_eyetapper_tpcamoffset_right", -500, 500, 0 )
-        panel:NumSlider( "Camera Offset - Forward", "lambdaplayers_eyetapper_tpcamoffset_forward", -500, 500, 0 )
+        panel:NumSlider( "Up", "lambdaplayers_eyetapper_tpcamoffset_up", -500, 500, 0 )
+        panel:NumSlider( "Right", "lambdaplayers_eyetapper_tpcamoffset_right", -500, 500, 0 )
+        panel:NumSlider( "Forward", "lambdaplayers_eyetapper_tpcamoffset_forward", -500, 500, 0 )
 
         panel:Help( "Fixed Camera Offsets:" )
-        panel:NumSlider( "Camera Offset - Up", "lambdaplayers_eyetapper_fixedcamoffset_up", -500, 500, 0 )
-        panel:NumSlider( "Camera Offset - Right", "lambdaplayers_eyetapper_fixedcamoffset_right", -500, 500, 0 )
-        panel:NumSlider( "Camera Offset - Forward", "lambdaplayers_eyetapper_fixedcamoffset_forward", -500, 500, 0 )
+        panel:NumSlider( "Up", "lambdaplayers_eyetapper_fixedcamoffset_up", -500, 500, 0 )
+        panel:NumSlider( "Right", "lambdaplayers_eyetapper_fixedcamoffset_right", -500, 500, 0 )
+        panel:NumSlider( "Forward", "lambdaplayers_eyetapper_fixedcamoffset_forward", -500, 500, 0 )
+        
+        panel:Help( "First Person Camera Offsets:" )
+        panel:NumSlider( "Up", "lambdaplayers_eyetapper_fpcamoffset_up", -500, 500, 0 )
+        panel:NumSlider( "Right", "lambdaplayers_eyetapper_fpcamoffset_right", -500, 500, 0 )
+        panel:NumSlider( "Forward", "lambdaplayers_eyetapper_fpcamoffset_forward", -500, 500, 0 )
     end
 end
 
