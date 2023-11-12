@@ -19,6 +19,7 @@ local viewPunching = CreateClientConVar( "lambdaplayers_eyetapper_viewpunching",
 local forcetpontaunt = CreateClientConVar( "lambdaplayers_eyetapper_forcetpontaunting", "0", true, false, "If the camera should be forced from first person to third person when the Lambda Player is playing special animation", 0, 1 )
 local drawHaloOnEnemy = CreateClientConVar( "lambdaplayers_eyetapper_drawhaloonenemy", "1", true, false, "If Lambda Player's current enemy/killer should have halo on them for user's easier tracking", 0, 1 )
 local weaponOriginOnName = CreateClientConVar( "lambdaplayers_eyetapper_weaponoriginonname", "1", true, false, "If weapon's name on HUD should also display the category its located in", 0, 1 )
+local displayStateEnemy = CreateClientConVar( "lambdaplayers_eyetapper_displaystateenemy", "1", true, false, "If Lambda Player's current state and valid enemy should display alongside its name above the HUD", 0, 1 )
 
 local useCustomFPFov = CreateClientConVar( "lambdaplayers_eyetapper_usecustomfpfov", "0", true, false, "Should the first person camera view use custom field of view instead of the user one", 0, 1 )
 local firstPersonFov = CreateClientConVar( "lambdaplayers_eyetapper_fpfov", "90", true, false, "Custom first person camera view field of view", 0, 180 )
@@ -149,7 +150,7 @@ if ( CLIENT ) then
     local input_GetKeyCode = input.GetKeyCode
 
     local calcViewTbl = { drawviewer = true }
-    local camTrTbl = { filter = {}, mins = Vector( -10, -10, -5 ), maxs = Vector( 10, 10, 5 ) }
+    local camTrTbl = { filter = {}, mask = MASK_VISIBLE_AND_NPCS, mins = Vector( -10, -10, -5 ), maxs = Vector( 10, 10, 5 ) }
     local camOffVec = Vector()
     local hudBoxClr = Color( 0, 0, 0, 125 )
 
@@ -305,7 +306,7 @@ if ( CLIENT ) then
         
         local stateInfo, enemyInfo
         local isDead = target:GetIsDead()
-		if !isDead then
+		if !isDead and displayStateEnemy:GetBool() then
             stateInfo = "State: " .. target:GetState()
             SetTextFont( "letfont_aiinfo" )
             boxWidth = max( boxWidth, GetTextFontSize( stateInfo ) + 15 )
@@ -341,7 +342,7 @@ if ( CLIENT ) then
             local wepName = target:GetNW2String( ( !weaponOriginOnName:GetBool() and "lambda_weaponprettyname" or "lambdaeyetap_weaponname" ), "Holster" )
             if wepName and wepName != "Holster" then
                 SetTextFont( "letfont_wpnname" )
-                boxWidth = GetTextFontSize( wepName ) + 15
+                boxWidth = GetTextFontSize( wepName ) + 20
 
                 local maxClip = target:GetNW2Int( "lambdaeyetap_weaponmaxclip", 0 )
                 if maxClip > 0 then
@@ -355,7 +356,7 @@ if ( CLIENT ) then
 
                     SetTextFont( "letfont_ammo" )
                     local clipText = tostring( max( 0, target:GetNW2Int( "lambdaeyetap_weaponcurrentclip", 0 ) ) ) .. "/" .. tostring( maxClip )
-                    boxWidth = max( max( boxWidth, reloadSize + 15 ), ( GetTextFontSize( clipText ) + 15 ) )
+                    boxWidth = max( max( boxWidth, reloadSize + 20 ), ( GetTextFontSize( clipText ) + 20 ) )
 
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
                     local offscreenX = max( ( boxX + boxWidth + 25 ) - scrW, 0 )
@@ -478,7 +479,7 @@ if ( CLIENT ) then
             end
         end
 
-        local isTaunting = lambda:IsPlayingTaunt()
+        local isTaunting = ( lambda.IsPlayingTaunt and lambda:IsPlayingTaunt() )
         if camMode == 3 and isTaunting and forcetpontaunt:GetBool() then
             camMode = 1
 

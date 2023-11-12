@@ -27,6 +27,7 @@ if ( CLIENT ) then
         [ "lambdaplayers_eyetapper_forcetpontaunting" ] = "0",
         [ "lambdaplayers_eyetapper_drawhaloonenemy" ] = "1",
         [ "lambdaplayers_eyetapper_weaponoriginonname" ] = "1",
+        [ "lambdaplayers_eyetapper_displaystateenemy" ] = "1",
         [ "lambdaplayers_eyetapper_usecustomfpfov" ] = "0",
         [ "lambdaplayers_eyetapper_fpfov" ] = "90",
         [ "lambdaplayers_eyetapper_tpcamoffset_up" ] = "0",
@@ -67,6 +68,9 @@ if ( CLIENT ) then
 
         panel:CheckBox( "Include Weapon's Category In HUD", "lambdaplayers_eyetapper_weaponoriginonname" )
         panel:ControlHelp( "If Lambda Player's weapon name on HUD should also include the category its located in" )
+        
+        panel:CheckBox( "Display State And Enemy In HUD", "lambdaplayers_eyetapper_displaystateenemy" )
+        panel:ControlHelp( "If Lambda Player's current state and valid enemy should display alongside its name above the HUD" )
 
         panel:CheckBox( "Use Custom First Person FOV", "lambdaplayers_eyetapper_usecustomfpfov" )
         panel:ControlHelp( "Should the first person camera view use custom field of view instead of the user one" )
