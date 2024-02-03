@@ -95,8 +95,8 @@ function LET:SetTarget( target, ply )
 end
 
 function LET:GetTarget( ply )
-    if !ply and CLIENT then 
-        ply = LocalPlayer() 
+    if !ply and CLIENT then
+        ply = LocalPlayer()
         if !IsValid( ply ) then return end
     end
     return ply:GetNW2Entity( "lambdaeyetap_target" )
@@ -161,13 +161,13 @@ if ( CLIENT ) then
         if !IsValid( target ) then return end
 
         local camMode = LET.CameraMode
-        if target:GetNoDraw() then
+        if target:GetIsDead() then
             LET.CameraMode = ( camMode != 3 and 3 or 1 )
         else
             LET.CameraMode = ( camMode + 1 )
 
-            if LET.CameraMode > 3 then 
-                LET.CameraMode = 1 
+            if LET.CameraMode > 3 then
+                LET.CameraMode = 1
             elseif LET.CameraMode < 1 then
                 LET.CameraMode = 3
             end
@@ -194,7 +194,7 @@ if ( CLIENT ) then
         local target = net.ReadEntity()
         local prevTarget = LET.PrevTarget
 
-        if !IsValid( prevTarget ) then 
+        if !IsValid( prevTarget ) then
             LET.CameraMode = 1
             LET.PrevTarget = nil
             LET.LastCamTarget = nil
@@ -303,7 +303,7 @@ if ( CLIENT ) then
         SetTextFont( "letfont_lambdaname" )
         local boxWidth = GetTextFontSize( lambdaName ) + 25
         local boxHeight = 17.5
-        
+
         local stateInfo, enemyInfo
         local isDead = target:GetIsDead()
 		if !isDead and displayStateEnemy:GetBool() then
@@ -314,7 +314,7 @@ if ( CLIENT ) then
 
             if target:InCombat() or target:IsPanicking() then
                 enemyInfo = target:GetEnemy()
-                if IsValid( enemyInfo ) then 
+                if IsValid( enemyInfo ) then
                     local enemyName = enemyInfo:GetClass()
                     if enemyInfo.IsLambdaPlayer or enemyInfo:IsPlayer() then
                         enemyName = enemyInfo:Nick()
@@ -361,7 +361,7 @@ if ( CLIENT ) then
                     local boxX = ( ( scrW / 1.155 ) - boxWidth / 2 )
                     local offscreenX = max( ( boxX + boxWidth + 25 ) - scrW, 0 )
                     RoundedBox( 10, ( boxX - offscreenX * 2 ), scrH / 1.1825, ( boxWidth + offscreenX ), LambdaScreenScale( 35 ), hudBoxClr )
-                    
+
                     local offWepX = ( ( scrW / 1.155 ) - offscreenX * 1.5 )
                     DrawText( wepName, "letfont_wpnname", offWepX, scrH / 1.1725, dispClr, TEXT_ALIGN_CENTER )
 
@@ -403,7 +403,7 @@ if ( CLIENT ) then
                 local apSize = GetTextFontSize( apPerc ) + 20
                 SetTextFont( "letfont_hparmor_text" )
                 apSize = max( apSize, GetTextFontSize( "Armor" ) + 20 )
-    
+
                 RoundedBox( 10, ( scrW / 4.45 ) - apSize / 2 , scrH / 1.1825, apSize, LambdaScreenScale( 35 ), hudBoxClr )
                 DrawText( "Armor", "letfont_hparmor_text", scrW / 4.45, scrH / 1.175, dispClr, TEXT_ALIGN_CENTER )
                 DrawText( apPerc, "letfont_hparmor", scrW / 4.45, scrH / 1.15, dispClr, TEXT_ALIGN_CENTER )
@@ -435,7 +435,7 @@ if ( CLIENT ) then
             DrawChildrenBoneSize( target, childID, draw )
         end
     end
-    
+
     function LET:DrawTargetHead( target, draw )
         local headBone = target:LookupBone( "ValveBiped.Bip01_Head1" )
         if !headBone then return end
@@ -454,7 +454,7 @@ if ( CLIENT ) then
 
         local lambda = LET:GetTarget( ply )
         if !IsValid( lambda ) then return end
-        
+
         local target = lambda
         local lastTarget = LET.LastCamTarget
         if target != lastTarget then
@@ -465,9 +465,9 @@ if ( CLIENT ) then
 
         local camMode = LET.CameraMode
         local isRagdoll = false
-        if lambda:GetNoDraw() then
+        if lambda:GetIsDead() then
             local ragdoll = lambda:GetRagdollEntity()
-            if IsValid( ragdoll ) then 
+            if IsValid( ragdoll ) then
                 target = ragdoll
                 isRagdoll = true
 
@@ -496,14 +496,14 @@ if ( CLIENT ) then
         local targEyes = lambda:GetAttachmentPoint( "eyes", target )
         local facePos = lambda:GetNW2Vector( "lambda_facepos" )
         if camMode == 3 then
-            local camOffset = ( viewAng:Forward() * fpCamOffset_Forward:GetInt() + viewAng:Right() * fpCamOffset_Right:GetInt() + viewAng:Up() * fpCamOffset_Up:GetInt() )            
+            local camOffset = ( viewAng:Forward() * fpCamOffset_Forward:GetInt() + viewAng:Right() * fpCamOffset_Right:GetInt() + viewAng:Up() * fpCamOffset_Up:GetInt() )
             viewPos = ( targEyes.Pos + camOffset )
 
             local eyeAng = targEyes.Ang
-            if !isRagdoll and !isTaunting then 
+            if !isRagdoll and !isTaunting then
                 local pitchLimit = target:GetAngles().x
                 local yawLimit = target:GetAngles().y
-                
+
                 if !facePos:IsZero() then
                     eyeAng = ( facePos - viewPos ):Angle()
                 else
@@ -536,8 +536,8 @@ if ( CLIENT ) then
             if isRagdoll then
                 local followTime = followKillerTime:GetInt()
                 local killer = LET:GetKiller( lambda )
-    
-                if followTime > 0 and IsValid( killer ) then 
+
+                if followTime > 0 and IsValid( killer ) then
                     local followPos = killer:WorldSpaceCenter()
                     if ( killer.IsLambdaPlayer or killer:IsPlayer() ) and !killer:Alive() then
                         local killerRag = killer:GetRagdollEntity()
@@ -558,8 +558,8 @@ if ( CLIENT ) then
             camTrTbl.start = targPos
             camTrTbl.filter[ 1 ] = lambda
             camTrTbl.filter[ 2 ] = target
-    
-            local camOffset = ( camAng:Forward() * tpCamOffset_Forward:GetInt() + camAng:Right() * tpCamOffset_Right:GetInt() + camAng:Up() * tpCamOffset_Up:GetInt() )            
+
+            local camOffset = ( camAng:Forward() * tpCamOffset_Forward:GetInt() + camAng:Right() * tpCamOffset_Right:GetInt() + camAng:Up() * tpCamOffset_Up:GetInt() )
             local isFixedCam = ( camMode == 2 and !isRagdoll )
             if isFixedCam then
                 if !facePos:IsZero() then
@@ -579,7 +579,7 @@ if ( CLIENT ) then
             camPos = TraceHull( camTrTbl ).HitPos
 
             viewPos = ( !isFixedCam and camPos or LerpVector( 0.4, viewPos, camPos ) )
-            viewAng = camAng 
+            viewAng = camAng
         end
 
         local camFov = ( ( camMode == 3 and useCustomFPFov:GetBool() ) and firstPersonFov:GetInt() or fov )
@@ -651,7 +651,7 @@ if ( CLIENT ) then
         end
 
         local haloClr = target:GetDisplayColor()
-        if enemy.IsLambdaPlayer or enemy:IsPlayer() then 
+        if enemy.IsLambdaPlayer or enemy:IsPlayer() then
             haloClr = enemy:GetPlayerColor():ToColor()
 
             if !enemy:Alive() then
@@ -678,8 +678,8 @@ if ( SERVER ) then
     local table_KeyFromValue = table.KeyFromValue
 
     LET.InEyeTapMode = LET.InEyeTapMode or {}
-    LET.LastKeyPress = LET.LastKeyPress or {} 
-    LET.PreEyeTapData = LET.PreEyeTapData or {} 
+    LET.LastKeyPress = LET.LastKeyPress or {}
+    LET.PreEyeTapData = LET.PreEyeTapData or {}
 
     util.AddNetworkString( "lambdaeyetapper_settarget" )
     util.AddNetworkString( "lambdaeyetapper_setviewmode" )
@@ -688,7 +688,7 @@ if ( SERVER ) then
     local function OnServerThink()
         for _, ply in ipairs( GetHumans() ) do
             local target = LET:GetTarget( ply )
-            if !IsValid( target ) then 
+            if !IsValid( target ) then
                 if LET.InEyeTapMode[ ply ] then
                     LET.InEyeTapMode[ ply ] = false
 
@@ -696,9 +696,9 @@ if ( SERVER ) then
                     ply:DrawShadow( true )
                     ply:SetNoDraw( false )
                     ply:SetMoveType( MOVETYPE_WALK )
-                    ply:SetCollisionGroup( COLLISION_GROUP_IN_VEHICLE )
+                    ply:SetCollisionGroup( COLLISION_GROUP_PLAYER )
                     ply:DrawViewModel( true )
-                    
+
                     local preData = LET.PreEyeTapData[ ply ]
                     if preData then
                         ply:SetEyeAngles( preData[ 1 ] )
@@ -711,31 +711,31 @@ if ( SERVER ) then
                             wepEnt:SetClip1( wep[ 2 ] )
                             wepEnt:SetClip2( wep[ 3 ] )
 
-                            if !hasToolGun and wep[ 1 ] == "gmod_tool" then 
+                            if !hasToolGun and wep[ 1 ] == "gmod_tool" then
                                 hasToolGun = true
-                                ply:SelectWeapon( wepEnt ) 
+                                ply:SelectWeapon( wepEnt )
                             end
                         end
                     end
                 end
-            else 
+            else
                 target:SetNW2Int( "lambdaeyetap_weaponcurrentclip", target.l_Clip )
                 target:SetNW2String( "lambdaeyetap_chattyped", ( target.l_queuedtext != nil and target.l_typedtext or nil ) )
-                
+
                 local lastPress = LET.LastKeyPress[ ply ]
                 if CurTime() >= lastPress then
                     local keyPressed = false
-                    
+
                     if ply:KeyPressed( IN_RELOAD ) then
                         LET:SetTarget( nil, ply )
                         keyPressed = true
                     elseif ply:KeyPressed( IN_JUMP ) then
                         net.Start( "lambdaeyetapper_setviewmode" )
                         net.Send( ply )
-                        
+
                         keyPressed = true
                     elseif ply:KeyPressed( IN_ATTACK ) then
-                        local lambdas = GetLambdaPlayers()        
+                        local lambdas = GetLambdaPlayers()
                         local curIndex = table_KeyFromValue( lambdas, target )
 
                         for index, lambda in ipairs( lambdas ) do
@@ -744,14 +744,14 @@ if ( SERVER ) then
                                 break
                             end
                             if index != #lambdas then continue end
-            
+
                             local firstLambda = lambdas[ 1 ]
                             if firstLambda != target then LET:SetTarget( lambdas[ 1 ], ply ) end
                         end
 
                         keyPressed = true
-                    elseif ply:KeyPressed( IN_ATTACK2 ) then                  
-                        local lambdas = table_Reverse( GetLambdaPlayers() )       
+                    elseif ply:KeyPressed( IN_ATTACK2 ) then
+                        local lambdas = table_Reverse( GetLambdaPlayers() )
                         local curIndex = table_KeyFromValue( lambdas, target )
 
                         for index, lambda in ipairs( lambdas ) do
@@ -760,7 +760,7 @@ if ( SERVER ) then
                                 break
                             end
                             if index != #lambdas then continue end
-            
+
                             local firstLambda = lambdas[ 1 ]
                             if firstLambda != target then LET:SetTarget( lambdas[ 1 ], ply ) end
                         end
@@ -814,9 +814,9 @@ if ( SERVER ) then
 
     local function OnLambdaKilled( lambda, dmginfo )
         local attacker = dmginfo:GetAttacker()
-        if attacker == lambda or !IsValid( attacker ) or !attacker:IsNPC() and !attacker:IsNextBot() and !attacker:IsPlayer() then 
+        if attacker == lambda or !IsValid( attacker ) or !attacker:IsNPC() and !attacker:IsNextBot() and !attacker:IsPlayer() then
             LET:SetKiller( lambda, NULL )
-            return 
+            return
         end
         LET:SetKiller( lambda, attacker )
     end
@@ -859,7 +859,7 @@ local function OnLambdaRemoved( lambda )
 
         local lambdas = GetLambdaPlayers()
         local switchTarget = lambda.l_recreatedlambda
-        if !IsValid( switchTarget ) then 
+        if !IsValid( switchTarget ) then
             if #lambdas == 1 then
                 switchTarget = lambdas[ 1 ]
             else
