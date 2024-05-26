@@ -1,7 +1,6 @@
 local IsValid = IsValid
 local net = net
 local LocalPlayer = ( CLIENT and LocalPlayer )
-local RandomPairs = RandomPairs
 local ipairs = ipairs
 local GetHumans = player.GetHumans
 local surface_PlaySound = ( CLIENT and surface.PlaySound )
@@ -126,7 +125,6 @@ if ( CLIENT ) then
     local LerpVector = LerpVector
     local LerpAngle = LerpAngle
     local FrameTime = FrameTime
-    local min = math.min
     local max = math.max
     local TraceLine = util.TraceLine
     local TraceHull = util.TraceHull
@@ -136,8 +134,6 @@ if ( CLIENT ) then
     local RoundedBox = draw.RoundedBox
     local RoundedBoxEx = draw.RoundedBoxEx
     local ceil = math.ceil
-    local floor = math.floor
-    local sub = string.sub
     local tostring = tostring
     local RealTime = RealTime
     local SetTextFont = surface.SetFont
@@ -151,7 +147,6 @@ if ( CLIENT ) then
 
     local calcViewTbl = { drawviewer = true }
     local camTrTbl = { filter = {}, mask = MASK_VISIBLE_AND_NPCS, mins = Vector( -10, -10, -5 ), maxs = Vector( 10, 10, 5 ) }
-    local camOffVec = Vector()
     local hudBoxClr = Color( 0, 0, 0, 125 )
 
     --
@@ -583,7 +578,6 @@ if ( CLIENT ) then
         end
 
         local camFov = ( ( camMode == 3 and useCustomFPFov:GetBool() ) and firstPersonFov:GetInt() or fov )
-        local drawHead = true
         if smoothCamera:GetBool() then
             local duration = LET.CamInterpEndTime
             local timeElapsed = ( CurTime() - LET.CamInterpStartTime )
